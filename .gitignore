@@ -1,0 +1,7 @@
+build/
+*.egg-info/
+__pycache__/
+sips-labels.jsonl
+examples/loops/
+examples/low-leverage/
+examples/high-leverage/

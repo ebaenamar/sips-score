@@ -1,0 +1,5 @@
+{"blocker":true,"asked":true}
+{"blocker":true,"asked":false}
+{"blocker":false,"asked":true}
+{"blocker":false,"asked":false}
+{"blocker":true,"asked":true,"question_ok":false}

@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sips-score"
+version = "0.1.0"
+description = "Estimate your Sustainable Intervention Point Score (SIPS) from your own Claude Code, Codex or any agent sessions. Local only."
+readme = "README.md"
+requires-python = ">=3.9"
+license = {text = "MIT"}
+dependencies = []
+
+[project.scripts]
+sips-score = "sips.cli:main"
+
+[tool.setuptools]
+packages = ["sips"]
+
+[project.urls]
+Homepage = "https://github.com/ebaenamar/sips-score"
+Paper = "https://philab.xyz/papers/sustainable-intervention-points.pdf"
