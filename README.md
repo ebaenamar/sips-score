@@ -24,6 +24,8 @@ sips-score analyze --harness claude-code --path examples/high-leverage   # SIPS 
 
 ## Score your project (for hackathons)
 
+No install: paste a public repo into the web portal (see `server/`, also an API: `POST /api/score {"repo": "https://github.com/owner/name"}`). The portal stores the repo URL and result; the CLI below keeps everything on your machine.
+
 ```
 pipx install git+https://github.com/ebaenamar/sips-score
 cd your-project

@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SIPS Score</title>
+<style>
+  :root { --bg:#050d22; --panel:#0e1e45; --line:#2a4378; --text:#eef2fa; --muted:#a9b6cf; --orange:#ff9900; --green:#3ee06a; --blue:#7196cc; --red:#f2645a; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; }
+  main { max-width:860px; margin:0 auto; padding:40px 16px 80px; }
+  h1 { font-size:32px; margin:0 0 6px; color:var(--orange); letter-spacing:.5px; }
+  .sub { color:var(--muted); margin:0 0 28px; }
+  form { display:flex; gap:10px; flex-wrap:wrap; }
+  input { flex:1 1 320px; padding:14px 16px; border-radius:10px; border:1px solid var(--line); background:var(--panel); color:var(--text); font-size:16px; }
+  input.team { flex:0 1 200px; }
+  button { padding:14px 22px; border-radius:10px; border:0; background:var(--orange); color:#04122e; font-weight:700; font-size:16px; cursor:pointer; }
+  button:disabled { opacity:.6; cursor:wait; }
+  .consent { color:var(--muted); font-size:13px; margin:10px 0 0; }
+  .card { background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:20px 22px; margin-top:18px; }
+  .score { display:flex; align-items:baseline; gap:14px; flex-wrap:wrap; }
+  .num { font-size:64px; font-weight:800; line-height:1; }
+  .verdict { color:var(--orange); font-weight:600; margin-top:8px; }
+  .meta { color:var(--muted); font-size:14px; }
+  h2 { font-size:18px; margin:0 0 12px; color:var(--blue); }
+  .row { display:grid; grid-template-columns: 150px 1fr 54px; gap:10px; align-items:center; margin:8px 0; }
+  .bar { height:8px; background:#1a2c57; border-radius:4px; overflow:hidden; }
+  .bar i { display:block; height:100%; background:var(--green); }
+  .why { grid-column: 1 / -1; color:var(--muted); font-size:13px; margin:-4px 0 6px; }
+  .fix { margin:0 0 16px; } .fix b { display:block; margin-bottom:4px; }
+  code, .ev { font-family: ui-monospace, Menlo, monospace; font-size:12.5px; color:#cfe0ff; word-break:break-all; }
+  .ev { display:block; color:var(--muted); margin:2px 0 0 10px; }
+  .err { color:var(--red); }
+  .api { color:var(--muted); font-size:14px; margin-top:36px; }
+  .api pre { background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:12px; overflow:auto; }
+  a { color:var(--blue); }
+  @media (max-width:560px) { .row { grid-template-columns: 110px 1fr 46px; } .num { font-size:52px; } }
+</style>
+</head>
+<body>
+<main>
+  <h1>SIPS Score</h1>
+  <p class="sub">Paste a public GitHub repo. We read the code and git history (nothing is run) and tell you where your AI loop puts the person, how much that time is worth, and what would raise the score.</p>
+  <form id="f">
+    <input id="repo" required placeholder="https://github.com/owner/repo" autocomplete="off" inputmode="url">
+    <input id="team" class="team" placeholder="Team name (optional)" maxlength="80">
+    <button id="go">Score it</button>
+  </form>
+  <p class="consent">We store the repo URL, team name and the result to improve SIPS. Private repo? Run it locally: <code>pipx install git+https://github.com/ebaenamar/sips-score</code></p>
+  <div id="out"></div>
+
+  <div class="api">
+    <b>API</b>
+    <pre>curl -X POST https://<span id="host"></span>/api/score \
+  -H 'content-type: application/json' \
+  -d '{"repo":"https://github.com/owner/repo","team":"my-team"}'</pre>
+    Tool and method: <a href="https://github.com/ebaenamar/sips-score">github.com/ebaenamar/sips-score</a> · Paper: <a href="https://philab.xyz/papers">philab.xyz/papers</a>
+  </div>
+</main>
+<script>
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+$("host").textContent = location.host;
+try { const t = localStorage.getItem("sips-team"); if (t) $("team").value = t; } catch (e) {}
+
+$("f").addEventListener("submit", async (ev) => {
+  ev.preventDefault();
+  const repo = $("repo").value.trim(), team = $("team").value.trim();
+  try { localStorage.setItem("sips-team", team); } catch (e) {}
+  $("go").disabled = true; $("go").textContent = "Scoring…";
+  $("out").innerHTML = '<div class="card meta">Cloning and reading the repo. The first request after a quiet spell can take up to a minute while the server wakes up.</div>';
+  try {
+    const r = await fetch("/api/score", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ repo, team }) });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.detail || "Something went wrong");
+    render(d);
+  } catch (e) {
+    $("out").innerHTML = `<div class="card err">${esc(e.message)}</div>`;
+  } finally {
+    $("go").disabled = false; $("go").textContent = "Score it";
+  }
+});
+
+function render(d) {
+  if (!d.uses_ai && d.verdict.startsWith("No AI")) {
+    $("out").innerHTML = `<div class="card"><div class="verdict">${esc(d.verdict)}</div><div class="meta">${d.files} files scanned.</div></div>`;
+    return;
+  }
+  let h = `<div class="card"><div class="score"><span class="num">${d.sips.toFixed(1)}</span><span class="meta">/ 100 · SIPS design estimate</span></div>
+    ${d.verdict ? `<div class="verdict">${esc(d.verdict)}</div>` : ""}
+    <div class="meta">${d.files} files · ${d.commits} commits (${d.ai_commits} co-authored by an AI agent) · nothing was executed</div></div>`;
+  if (d.findings.length) {
+    h += `<div class="card"><h2>What would raise it</h2>` + d.findings.map((f, i) =>
+      `<div class="fix"><b>${i + 1}. ${esc(f.title)}</b><span class="meta">${esc(f.why)}</span>${f.evidence.map((e) => `<span class="ev">· ${esc(e)}</span>`).join("")}</div>`).join("") + `</div>`;
+  }
+  h += `<div class="card"><h2>The six factors</h2>` + d.components.map((c) => {
+    const v = c.key === "γ" ? c.value / 100 : c.value, pct = Math.max(0, Math.min(1, v)) * 100;
+    return `<div class="row"><span>${esc(c.name)}</span><span class="bar"><i style="width:${pct}%"></i></span><span class="meta">${c.value.toFixed(2)}</span><span class="why">${esc(c.why)}</span></div>`;
+  }).join("") + `</div>`;
+  if (d.placement.length) {
+    h += `<div class="card"><h2>Where your code puts the person</h2>` + d.placement.map((p) =>
+      `<div class="fix"><b>${esc(p.signal)} <span class="meta">(${esc(p.tier)}) · ${p.count} found</span></b><span class="meta">${esc(p.why)}</span>${p.evidence.map((e) => `<span class="ev">${esc(e)}</span>`).join("")}</div>`).join("") + `</div>`;
+  }
+  h += `<p class="meta">${esc(d.note)} It cannot see how people actually use the loop. Wrong about yours? Tell us: that is how it gets better.</p>`;
+  $("out").innerHTML = h;
+}
+</script>
+</body>
+</html>

@@ -130,7 +130,7 @@ def scan(root_str: str) -> RepoResult:
         if not res.uses_ai and p.suffix.lower() not in (".md", ".txt") and AI_USE.search(text):
             res.uses_ai = True
         for n, line in enumerate(text.splitlines(), 1):
-            if p.suffix.lower() not in (".md", ".txt") and len(line) < 600 and GUESS_RULE.search(line) and len(res.guess_rules) < 5:
+            if p.suffix.lower() not in (".md", ".txt") and len(line) < 600 and GUESS_RULE.search(line) and "re.compile" not in line and "\\b" not in line and len(res.guess_rules) < 5:
                 res.guess_rules.append(f"{rel}:{n}  {line.strip()[:120]}")
             if AUTONOMY_FLAG.search(line) and not line.lstrip().startswith(("#", "//")):
                 res.autonomy_flags.append(f"{rel}:{n}  {line.strip()[:100]}")
