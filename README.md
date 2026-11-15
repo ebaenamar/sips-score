@@ -49,7 +49,7 @@ sips-score askf1 runs.jsonl        # Ask-F1 = harmonic mean of question precisio
 ```
 
 Try it first on the two example loops: `python examples/make_loop_examples.py` then
-`sips-score repo examples/loops/designed-loop` (≈80) and `sips-score repo examples/loops/approve-every-step` (≈32).
+`sips-score repo examples/loops/designed-loop` (≈80), `sips-score repo examples/loops/approve-every-step` (≈32) and `sips-score repo examples/loops/ai-only` (≈33).
 
 ## What you get
 
