@@ -112,14 +112,23 @@ def _story(res) -> dict:
     esc, learn, fb = _count(res, "escalation"), _count(res, "learning-loop"), _count(res, "feedback-capture")
     tests = len(res.test_files) + _count(res, "eval-set")
     autonomous = res.verdict.startswith("Fully autonomous")
+    approvals_lead = bool(t4) and t4 >= t1 + t2
     if autonomous:
-        closest, time_head = "ai-only", "Zero human minutes, and nobody is checking."
-    elif t4 and t4 >= t1 + t2:
-        closest, time_head = "approve-every-step", "A person clicks for each result: their time grows with every result."
-    elif res.sips >= 60:
-        closest, time_head = "designed-loop", "Human time goes into rules, examples and hand-offs: it does not grow with volume."
+        time_head = "Zero human minutes, and nobody is checking."
+    elif approvals_lead:
+        time_head = "Most touchpoints are one click per result: that time grows with every result."
+    elif t1 + t2 > t4:
+        time_head = "Human time goes mostly into rules, examples and tests: it does not grow with volume."
     else:
-        closest, time_head = "", "Some human touchpoints, mostly low leverage."
+        time_head = "A few human touchpoints, mostly low leverage."
+    if autonomous:
+        closest = "ai-only"
+    elif approvals_lead and res.sips < 50:
+        closest = "approve-every-step"
+    elif res.sips >= 70:
+        closest = "designed-loop"
+    else:
+        closest = ""
     right = [("Tests or expected answers", f"{tests} found" if tests else "none: no way to tell which results are wrong", bool(tests)),
              ("Asks a person when it is stuck", f"yes ({esc} place{'' if esc == 1 else 's'})" if esc else "no: missing information becomes a silent guess", bool(esc)),
              ("Keeps the corrections", "yes, fed back into the loop" if learn else ("collected but not reused" if fb else "no"), bool(learn))]
