@@ -39,6 +39,7 @@
   .examples { display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin:14px 0 0; color:var(--muted); font-size:14px; }
   .examples button { background:transparent; color:var(--text); border:1px solid var(--line); padding:8px 14px; font-weight:600; font-size:14px; }
   .examples button:hover { border-color:var(--orange); }
+  button:focus-visible { outline:3px solid #fff; outline-offset:2px; }
   .hero { display:grid; grid-template-columns: auto 1fr; gap:22px; align-items:center; }
   .closest { display:inline-block; margin-top:8px; padding:4px 12px; border-radius:999px; font-weight:700; font-size:14px; color:#04122e; }
   .two { display:grid; grid-template-columns:1fr 1fr; gap:18px; }
@@ -68,10 +69,9 @@
     <input id="team" class="team" placeholder="Team name (optional)" maxlength="80">
     <button id="go">Score it</button>
   </form>
-  <div class="examples">Or try an example loop:
-    <button type="button" data-ex="ai-only">AI alone</button>
-    <button type="button" data-ex="approve-every-step">Approve every one</button>
-    <button type="button" data-ex="designed-loop">Designed loop</button>
+  <div class="examples">Try a past Sundai hack:
+    <button type="button" data-repo="https://github.com/sundai-club/agent-x">agent-x</button>
+    <button type="button" data-repo="https://github.com/sundai-club/6s093-social-media-agent">social-media-agent</button>
   </div>
   <p class="consent">We store the repo URL, team name and the result to improve SIPS. Private repo? Run it locally: <code>pipx install git+https://github.com/ebaenamar/sips-score</code></p>
   <div id="out"></div>
@@ -110,8 +110,8 @@ $("f").addEventListener("submit", (ev) => {
   try { localStorage.setItem("sips-team", team); } catch (e) {}
   score($("repo").value.trim(), team);
 });
-document.querySelectorAll("[data-ex]").forEach((b) => b.addEventListener("click", () => {
-  $("repo").value = ""; score("example:" + b.dataset.ex, "");
+document.querySelectorAll("[data-repo]").forEach((b) => b.addEventListener("click", () => {
+  $("repo").value = b.dataset.repo; $("out").innerHTML = ""; $("go").focus();
 }));
 
 const COLORS = { "ai-only": "var(--red)", "approve-every-step": "var(--orange)", "designed-loop": "var(--green)" };

@@ -114,7 +114,7 @@ def _story(res) -> dict:
     autonomous = res.verdict.startswith("Fully autonomous")
     approvals_lead = bool(t4) and t4 >= t1 + t2
     if autonomous:
-        time_head = "Zero human minutes, and nobody is checking."
+        time_head = "Zero human minutes: no person steps in anywhere."
     elif approvals_lead:
         time_head = "Most touchpoints are one click per result: that time grows with every result."
     elif t1 + t2 > t4:
