@@ -36,6 +36,24 @@
   .err { color:var(--red); }
   .api { color:var(--muted); font-size:14px; margin-top:36px; }
   .api pre { background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:12px; overflow:auto; }
+  .examples { display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin:14px 0 0; color:var(--muted); font-size:14px; }
+  .examples button { background:transparent; color:var(--text); border:1px solid var(--line); padding:8px 14px; font-weight:600; font-size:14px; }
+  .examples button:hover { border-color:var(--orange); }
+  .hero { display:grid; grid-template-columns: auto 1fr; gap:22px; align-items:center; }
+  .closest { display:inline-block; margin-top:8px; padding:4px 12px; border-radius:999px; font-weight:700; font-size:14px; color:#04122e; }
+  .two { display:grid; grid-template-columns:1fr 1fr; gap:18px; }
+  .two .card { margin-top:18px; }
+  .q { font-size:13px; font-weight:800; letter-spacing:.06em; text-transform:uppercase; }
+  .head { font-size:17px; font-weight:700; margin:6px 0 14px; }
+  .step { display:grid; grid-template-columns: 1fr auto; gap:2px 10px; padding:9px 0; border-top:1px solid var(--line); }
+  .step .n { font-weight:700; font-size:18px; text-align:right; }
+  .step small { color:var(--muted); grid-column:1; }
+  .step.on .n { color:var(--green); } .step.warn .n { color:var(--orange); } .step.off .n { color:var(--muted); }
+  .check { padding:9px 0; border-top:1px solid var(--line); }
+  .check b { display:block; } .check span { font-size:14px; }
+  .yes { color:var(--green); } .no { color:var(--red); }
+  details summary { cursor:pointer; color:var(--blue); font-weight:600; }
+  @media (max-width:640px) { .two { grid-template-columns:1fr; } .hero { grid-template-columns:1fr; } }
   a { color:var(--blue); }
   @media (max-width:560px) { .row { grid-template-columns: 110px 1fr 46px; } .num { font-size:52px; } }
 </style>
@@ -50,6 +68,11 @@
     <input id="team" class="team" placeholder="Team name (optional)" maxlength="80">
     <button id="go">Score it</button>
   </form>
+  <div class="examples">Or try an example loop:
+    <button type="button" data-ex="ai-only">AI alone</button>
+    <button type="button" data-ex="approve-every-step">Approve every one</button>
+    <button type="button" data-ex="designed-loop">Designed loop</button>
+  </div>
   <p class="consent">We store the repo URL, team name and the result to improve SIPS. Private repo? Run it locally: <code>pipx install git+https://github.com/ebaenamar/sips-score</code></p>
   <div id="out"></div>
 
@@ -67,12 +90,9 @@ const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({"&":"&amp;","<":
 $("host").textContent = location.host;
 try { const t = localStorage.getItem("sips-team"); if (t) $("team").value = t; } catch (e) {}
 
-$("f").addEventListener("submit", async (ev) => {
-  ev.preventDefault();
-  const repo = $("repo").value.trim(), team = $("team").value.trim();
-  try { localStorage.setItem("sips-team", team); } catch (e) {}
+async function score(repo, team) {
   $("go").disabled = true; $("go").textContent = "Scoring…";
-  $("out").innerHTML = '<div class="card meta">Cloning and reading the repo. The first request after a quiet spell can take up to a minute while the server wakes up.</div>';
+  $("out").innerHTML = '<div class="card meta">Reading the repo… The first request after a quiet spell can take up to a minute while the server wakes up.</div>';
   try {
     const r = await fetch("/api/score", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ repo, team }) });
     const d = await r.json();
@@ -83,30 +103,48 @@ $("f").addEventListener("submit", async (ev) => {
   } finally {
     $("go").disabled = false; $("go").textContent = "Score it";
   }
+}
+$("f").addEventListener("submit", (ev) => {
+  ev.preventDefault();
+  const team = $("team").value.trim();
+  try { localStorage.setItem("sips-team", team); } catch (e) {}
+  score($("repo").value.trim(), team);
 });
+document.querySelectorAll("[data-ex]").forEach((b) => b.addEventListener("click", () => {
+  $("repo").value = ""; score("example:" + b.dataset.ex, "");
+}));
 
+const COLORS = { "ai-only": "var(--red)", "approve-every-step": "var(--orange)", "designed-loop": "var(--green)" };
 function render(d) {
   if (!d.uses_ai && d.verdict.startsWith("No AI")) {
     $("out").innerHTML = `<div class="card"><div class="verdict">${esc(d.verdict)}</div><div class="meta">${d.files} files scanned.</div></div>`;
     return;
   }
-  let h = `<div class="card"><div class="score"><span class="num">${d.sips.toFixed(1)}</span><span class="meta">/ 100 · SIPS design estimate</span></div>
-    ${d.verdict ? `<div class="verdict">${esc(d.verdict)}</div>` : ""}
-    <div class="meta">${d.files} files · ${d.commits} commits (${d.ai_commits} co-authored by an AI agent) · nothing was executed</div></div>`;
-  if (d.findings.length) {
-    h += `<div class="card"><h2>What would raise it</h2>` + d.findings.map((f, i) =>
+  const st = d.story, col = COLORS[st.closest] || "var(--blue)";
+  const title = d.example ? `Example: ${esc(d.example)}` : esc(d.repo.replace("https://github.com/", ""));
+  let h = `<div class="card"><div class="meta">${title}</div><div class="hero">
+      <div><span class="num" style="color:${col}">${d.sips.toFixed(0)}</span><span class="meta"> / 100 SIPS</span></div>
+      <div>${st.closest_name ? `<span class="closest" style="background:${col}">Closest to: ${esc(st.closest_name)}</span>` : `<span class="closest" style="background:var(--blue)">Somewhere in between</span>`}
+      ${d.verdict ? `<div class="meta" style="margin-top:8px">${esc(d.verdict)}</div>` : ""}</div></div></div>`;
+  const maxStep = Math.max(...st.time.steps.map((s) => s.count));
+  h += `<div class="two"><div class="card"><div class="q" style="color:var(--orange)">1 · Human time</div><div class="head">${esc(st.time.head)}</div><div class="meta" style="text-align:right;font-size:12px">places in your code</div>` +
+    st.time.steps.map((s, i) => `<div class="step ${s.count ? (i === 3 && s.count === maxStep ? "warn" : "on") : "off"}"><b>${esc(s.name)}</b><span class="n">${s.count}</span><small>${esc(s.note)}</small></div>`).join("") +
+    `</div><div class="card"><div class="q" style="color:var(--green)">2 · Is it right?</div><div class="head">${esc(st.right.head)}</div>` +
+    st.right.checks.map((c) => `<div class="check"><b>${esc(c.name)}</b><span class="${c.ok ? "yes" : "no"}">${c.ok ? "✓" : "✗"} ${esc(c.value)}</span></div>`).join("") + `</div></div>`;
+  if (!d.findings.length) {
+    h += `<div class="card"><h2>What would raise it</h2><span class="meta">Nothing obvious from the code. Next step: log real runs and score when it asks with <code>sips-score askf1</code>.</span></div>`;
+  } else {
+    h += `<div class="card"><h2>What would raise it</h2>` + d.findings.slice(0, 3).map((f, i) =>
       `<div class="fix"><b>${i + 1}. ${esc(f.title)}</b><span class="meta">${esc(f.why)}</span>${f.evidence.map((e) => `<span class="ev">· ${esc(e)}</span>`).join("")}</div>`).join("") + `</div>`;
   }
-  h += `<div class="card"><h2>The six factors</h2>` + d.components.map((c) => {
-    const v = c.key === "γ" ? c.value / 100 : c.value, pct = Math.max(0, Math.min(1, v)) * 100;
+  h += `<div class="card"><details><summary>Details: the factors and the evidence</summary><div style="margin-top:14px">` + d.components.map((c) => {
+    const v = c.key === "γ" ? 1 - c.value / 100 : c.value, pct = Math.max(0, Math.min(1, v)) * 100;
     return `<div class="row"><span>${esc(c.name)}</span><span class="bar"><i style="width:${pct}%"></i></span><span class="meta">${c.value.toFixed(2)}</span><span class="why">${esc(c.why)}</span></div>`;
-  }).join("") + `</div>`;
-  if (d.placement.length) {
-    h += `<div class="card"><h2>Where your code puts the person</h2>` + d.placement.map((p) =>
-      `<div class="fix"><b>${esc(p.signal)} <span class="meta">(${esc(p.tier)}) · ${p.count} found</span></b><span class="meta">${esc(p.why)}</span>${p.evidence.map((e) => `<span class="ev">${esc(e)}</span>`).join("")}</div>`).join("") + `</div>`;
-  }
+  }).join("") + d.placement.map((p) =>
+      `<div class="fix" style="margin-top:12px"><b>${esc(p.signal)} <span class="meta">· ${p.count} found</span></b><span class="meta">${esc(p.why)}</span>${p.evidence.map((e) => `<span class="ev">${esc(e)}</span>`).join("")}</div>`).join("") + `</div></details></div>`;
   h += `<p class="meta">${esc(d.note)} It cannot see how people actually use the loop. Wrong about yours? Tell us: that is how it gets better.</p>`;
   $("out").innerHTML = h;
+  $("out").scrollIntoView({ behavior: "smooth", block: "start" });
 }
 </script>
 </body>

@@ -147,7 +147,8 @@ class Repo(unittest.TestCase):
         self.assertGreater(good.sips, bad.sips + 30)
         self.assertTrue(any(h.signal == "escalation" for h in good.hits))
         self.assertTrue(any(h.signal == "per-step-approval" for h in bad.hits))
-        self.assertIn("escalation", bad.findings[0]["title"].lower())
+        self.assertIn("per-step approvals", bad.findings[0]["title"].lower())
+        self.assertTrue(any("escalation" in f["title"].lower() for f in bad.findings))
 
     def test_ui_copy_is_not_counted(self):
         from sips.repo import _in_string, _prose

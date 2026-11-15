@@ -15,6 +15,7 @@ import os
 import re
 import shutil
 import subprocess
+import sys
 import tempfile
 import threading
 import time
@@ -24,7 +25,7 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 
 from sips.redact import redact
-from sips.repo import PATTERNS, scan
+from sips.repo import PATTERNS, _count, scan
 
 REPO_RX = re.compile(r"^https://github\.com/([A-Za-z0-9_.-]+)/([A-Za-z0-9_.-]+?)(?:\.git)?/?$")
 MAX_REPO_MB = 300
@@ -32,6 +33,8 @@ CLONE_TIMEOUT = 90
 ADMIN_KEY = os.environ.get("ADMIN_KEY", "")
 DATABASE_URL = os.environ.get("DATABASE_URL", "")
 LOCAL_STORE = Path(os.environ.get("LOCAL_STORE", "/tmp/sips-runs.jsonl"))
+EXAMPLES_DIR = Path(__file__).resolve().parent.parent / "examples"
+EXAMPLES = {"ai-only": "AI alone", "approve-every-step": "Approve every one", "designed-loop": "Designed loop"}
 
 app = FastAPI(title="SIPS portal", docs_url="/api/docs", redoc_url=None)
 _slots = threading.Semaphore(3)          # at most 3 clones at once on a small instance
@@ -98,7 +101,42 @@ def _score_repo(url: str) -> dict:
         raise HTTPException(504, "Clone took too long. Run it locally with pipx.")
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
+    return _result(url, res)
 
+
+def _story(res) -> dict:
+    """The two questions from the talk, in plain words."""
+    t1 = _count(res, "guardrail", "system-prompt-rule") + len(res.rule_files)
+    t2 = _count(res, "eval-set", "feedback-capture") + len(res.test_files)
+    t3, t4 = _count(res, "oversight"), _count(res, "per-step-approval")
+    esc, learn, fb = _count(res, "escalation"), _count(res, "learning-loop"), _count(res, "feedback-capture")
+    tests = len(res.test_files) + _count(res, "eval-set")
+    autonomous = res.verdict.startswith("Fully autonomous")
+    if autonomous:
+        closest, time_head = "ai-only", "Zero human minutes, and nobody is checking."
+    elif t4 and t4 >= t1 + t2:
+        closest, time_head = "approve-every-step", "A person clicks for each result: their time grows with every result."
+    elif res.sips >= 60:
+        closest, time_head = "designed-loop", "Human time goes into rules, examples and hand-offs: it does not grow with volume."
+    else:
+        closest, time_head = "", "Some human touchpoints, mostly low leverage."
+    right = [("Tests or expected answers", f"{tests} found" if tests else "none: no way to tell which results are wrong", bool(tests)),
+             ("Asks a person when it is stuck", f"yes ({esc} place{'' if esc == 1 else 's'})" if esc else "no: missing information becomes a silent guess", bool(esc)),
+             ("Keeps the corrections", "yes, fed back into the loop" if learn else ("collected but not reused" if fb else "no"), bool(learn))]
+    ok = sum(r[2] for r in right)
+    right_head = ["You can't tell which results are wrong.", "Partly checked.", "Mostly checked.", "Checked, and it learns."][ok]
+    return {
+        "closest": closest, "closest_name": EXAMPLES.get(closest, ""),
+        "time": {"head": time_head, "steps": [
+            {"name": "Rules and limits", "note": "one rule, every result", "count": t1},
+            {"name": "Examples and tests", "note": "teach once, reuse", "count": t2},
+            {"name": "Review as a set", "note": "spot the pattern", "count": t3},
+            {"name": "Approve one by one", "note": "one click, one result", "count": t4}]},
+        "right": {"head": right_head, "checks": [{"name": n, "value": v, "ok": o} for n, v, o in right]},
+    }
+
+
+def _result(url: str, res) -> dict:
     placement = []
     for sig, role, _, why in PATTERNS:
         ev = [f"{h.path}:{h.line}  {redact(h.text)}" for h in res.hits if h.signal == sig]
@@ -113,6 +151,7 @@ def _score_repo(url: str) -> dict:
         "components": [{"key": k, "name": n, "value": round(v, 2), "why": w} for k, (n, v, w) in res.components.items()],
         "placement": placement,
         "findings": [{**f, "evidence": [redact(e) for e in f["evidence"][:2]]} for f in res.findings],
+        "story": _story(res),
         "note": "Static estimate from code and git history. Nothing was executed.",
     }
 
@@ -120,6 +159,10 @@ def _score_repo(url: str) -> dict:
 # ------------------------------------------------------------------ routes
 @app.on_event("startup")
 def _startup():
+    try:
+        subprocess.run([sys.executable, str(EXAMPLES_DIR / "make_loop_examples.py")], capture_output=True, timeout=60)
+    except Exception as e:
+        print("examples failed:", e, flush=True)
     try:
         _init_db()
     except Exception as e:
@@ -139,6 +182,11 @@ async def api_score(request: Request):
         raise HTTPException(400, 'Send JSON: {"repo": "https://github.com/owner/name"}')
     url = str(body.get("repo", "")).strip()
     team = str(body.get("team", "")).strip()[:80]
+    if url.startswith("example:") and url[8:] in EXAMPLES:
+        path = EXAMPLES_DIR / "loops" / url[8:]
+        if not path.exists():
+            raise HTTPException(503, "Examples are still being prepared. Try again in a few seconds.")
+        return JSONResponse({**_result(url, scan(str(path))), "example": EXAMPLES[url[8:]]})
     m = REPO_RX.match(url)
     if not m:
         raise HTTPException(400, "Use a public GitHub URL like https://github.com/owner/name")

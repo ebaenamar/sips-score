@@ -236,16 +236,16 @@ def _findings(res, t1, t2, t3, t4, esc, learn):
                     "why": "People already correct or rate the output here, but nothing stores it for the next run, so the same mistake comes back. "
                            "Save each correction and add it to the prompt as an example or rule (tier 2, then tier 1): this is the cheapest jump in leverage.",
                     "evidence": _ev(res, "feedback-capture")})
+    if t4 and t4 >= t1 + t2:
+        out.append({"title": "Replace per-step approvals with rules and checks",
+                    "why": "Approving every step is tier-4 review: one decision at a time, and the first place people start rubber-stamping. "
+                           "Turn what the approver checks into a rule (tier 1) or a test (tier 2).",
+                    "evidence": _ev(res, "per-step-approval")})
     if not esc:
         out.append({"title": "Add an escalation path for blockers",
                     "why": "With no way to hand a case to a person, every missing or ambiguous input becomes a silent guess. "
                            "HiL-Bench found frontier agents rarely ask when they should. Escalate on low confidence or missing data, and only then.",
                     "evidence": ["no escalation, handoff or ask-the-human code found"]})
-    if t4 >= 2 and t4 >= t1 + t2:
-        out.append({"title": "Replace per-step approvals with rules and checks",
-                    "why": "Approving every step is tier-4 review: one decision at a time, and the first place people start rubber-stamping. "
-                           "Turn what the approver checks into a rule (tier 1) or a test (tier 2).",
-                    "evidence": _ev(res, "per-step-approval")})
     if not learn and not _count(res, "feedback-capture"):
         out.append({"title": "Close the loop: feed results back",
                     "why": "The loop acts and measures but does not change itself. Store corrections and outcomes and use them to update prompts, rules or memory.",
