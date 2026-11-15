@@ -3,12 +3,15 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>SIPS Score</title>
+<title>SIPS Score · Phi Lab</title>
+<link rel="icon" href="https://philab.xyz/favicon.svg">
 <style>
   :root { --bg:#050d22; --panel:#0e1e45; --line:#2a4378; --text:#eef2fa; --muted:#a9b6cf; --orange:#ff9900; --green:#3ee06a; --blue:#7196cc; --red:#f2645a; }
   * { box-sizing:border-box; }
   body { margin:0; background:var(--bg); color:var(--text); font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; }
   main { max-width:860px; margin:0 auto; padding:40px 16px 80px; }
+  .brand { display:inline-flex; align-items:center; gap:8px; background:#fff; color:#04122e; text-decoration:none; font-weight:700; padding:6px 14px 6px 10px; border-radius:999px; margin-bottom:22px; }
+  .brand svg { color:#1B4DD7; height:22px; width:auto; }
   h1 { font-size:32px; margin:0 0 6px; color:var(--orange); letter-spacing:.5px; }
   .sub { color:var(--muted); margin:0 0 28px; }
   form { display:flex; gap:10px; flex-wrap:wrap; }
@@ -39,8 +42,9 @@
 </head>
 <body>
 <main>
+  <a class="brand" href="https://philab.xyz"><svg viewBox="0 0 540 752" width="22" height="30" aria-hidden="true"><path d="M177.724 650.805C172.804 652.34 172.121 644.425 171.506 641.219C163.785 602.364 170.788 548.364 178.646 509.441C190.945 448.583 211.956 388.408 229.891 329.086C186.299 336.796 133.619 358.253 89.2059 353.272C65.8722 350.645 61.1234 334.067 70.5526 314.179C83.0223 287.98 143.799 251.82 170.242 238.858C178.988 234.559 204.064 219.925 210.487 232.41C214.689 240.597 197.402 244.486 193.234 246.942C164.742 263.623 118.313 290.368 98.5325 316.089C97.0977 317.965 94.9112 318.443 95.7653 321.684C111.822 324.993 128.562 320.626 144.551 317.385C177.519 310.699 210.111 300.363 242.532 291.494C259.785 243.906 275.876 195.568 296.681 149.345C313.934 111.002 341.401 51.2708 389.264 46.4609C447.172 40.6276 485.196 91.0806 479.422 145.729C472.111 215.081 405.39 263.794 346.697 290.368C323.363 300.943 296.066 306.503 274.167 316.533C272.425 317.317 270.888 317.999 270.034 319.876C241.61 394.412 224.562 472.258 203.278 548.944C193.986 582.442 177.655 615.907 177.724 650.805ZM285.851 278.906C339.386 259.564 442.696 216.138 442.355 147.81C442.184 115.915 406.107 66.4511 372.49 91.1147C352.129 106.022 330.606 161.694 320.357 186.017C307.579 216.343 295.28 247.454 285.851 278.94V278.906Z" fill="currentColor"/></svg><span>Phi Lab</span></a>
   <h1>SIPS Score</h1>
-  <p class="sub">Paste a public GitHub repo. We read the code and git history (nothing is run) and tell you where your AI loop puts the person, how much that time is worth, and what would raise the score.</p>
+  <p class="sub">Your AI loop ships results. How many human minutes does it eat, and how many results are right? Paste a public GitHub repo. We read the code and git history (nothing is run) and tell you where your AI loop puts the person, how much that time is worth, and what would raise the score.</p>
   <form id="f">
     <input id="repo" required placeholder="https://github.com/owner/repo" autocomplete="off" inputmode="url">
     <input id="team" class="team" placeholder="Team name (optional)" maxlength="80">
@@ -54,7 +58,7 @@
     <pre>curl -X POST https://<span id="host"></span>/api/score \
   -H 'content-type: application/json' \
   -d '{"repo":"https://github.com/owner/repo","team":"my-team"}'</pre>
-    Tool and method: <a href="https://github.com/ebaenamar/sips-score">github.com/ebaenamar/sips-score</a> · Paper: <a href="https://philab.xyz/papers">philab.xyz/papers</a>
+    Made by <a href="https://philab.xyz">Phi Lab</a>, research on where people should sit in AI workflows. Tool and method: <a href="https://github.com/ebaenamar/sips-score">github.com/ebaenamar/sips-score</a> · Paper: <a href="https://philab.xyz/papers">philab.xyz/papers</a>
   </div>
 </main>
 <script>

@@ -1,5 +1,6 @@
-"""Create two tiny git repos with opposite human-AI designs, to try `sips-score repo` before your own project.
+"""Create three tiny git repos with opposite human-AI designs, to try `sips-score repo` before your own project.
 
+  loops/ai-only              the AI acts on every email, no person anywhere
   loops/approve-every-step   asks a person to approve every action, no rules, no evals, no learning
   loops/designed-loop        guardrails, a rules file, an eval set, escalation on blockers, feedback fed back
 """
@@ -8,6 +9,12 @@ from pathlib import Path
 
 HERE = Path(__file__).parent / "loops"
 FILES = {
+    "ai-only": {
+        "agent.py": ('from anthropic import Anthropic\n\n'
+                     'def handle(email, model):\n'
+                     '    draft = model.reply(email)\n'
+                     '    send(draft)  # straight to the customer\n'),
+    },
     "approve-every-step": {
         "agent.py": 'from anthropic import Anthropic\n\ndef run(task, model):\n    for step in model.plan(task):\n        ok = input(f"Approve step {step}? [y/n] ")\n        if ok == "y":\n            model.execute(step)\n',
     },
